@@ -1,0 +1,28 @@
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# --- Environment files (never commit real secrets) ---
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --- Java / Maven ---
+backend/target/
+
+# --- Node / frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Logs ---
+*.log
+logs/

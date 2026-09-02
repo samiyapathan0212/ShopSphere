@@ -1,0 +1,4 @@
+-- ShopSphere initial migration baseline.
+-- Phase 1: project foundation only. No business entities are created yet.
+-- Subsequent migrations will add product, cart, wishlist, review, coupon, order,
+-- payment, admin and analytics tables.

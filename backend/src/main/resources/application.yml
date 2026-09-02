@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: shopsphere-backend
+
+  # --- PostgreSQL (via environment variables) ---
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/shopsphere}
+    username: ${DB_USERNAME:shopsphere}
+    password: ${DB_PASSWORD:shopsphere}
+
+  # --- JPA / Hibernate ---
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  # --- Flyway database migrations ---
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  # --- Redis cache (via environment variables) ---
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+
+# --- Server ---
+server:
+  port: ${SERVER_PORT:8080}
+
+# --- Springdoc OpenAPI ---
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
