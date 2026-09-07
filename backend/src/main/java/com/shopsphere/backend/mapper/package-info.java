@@ -1,5 +1,5 @@
 /**
- * Placeholder for the mapper package.
- * Entity/DTO mappers will be implemented in later phases.
+ * Entity/DTO mappers.
+ * Phase 2A: {@code UserMapper}.
  */
 package com.shopsphere.backend.mapper;

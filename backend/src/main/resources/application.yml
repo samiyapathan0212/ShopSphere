@@ -31,6 +31,16 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+# --- JWT (via environment variables) ---
+app:
+  jwt:
+    # Development-only placeholder secret (base64-encoded). NEVER use in
+    # production: set JWT_SECRET to a strong random base64 value (e.g.
+    # `openssl rand -base64 64`) in your environment instead.
+    secret: ${JWT_SECRET:ZGV2LW9ubHktc2hvcHNwaGVyZS1qd3Qtc2VjcmV0LWtleS1wbGFjZWhvbGRlci0wMTIzNDU2Nzg5YWJjZGVm}
+    # Access token lifetime in milliseconds (15 minutes by default).
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}
+
 # --- Springdoc OpenAPI ---
 springdoc:
   api-docs:

@@ -1,5 +1,5 @@
 /**
- * Placeholder for the repository package.
- * Spring Data repositories will be implemented in later phases.
+ * Spring Data repositories.
+ * Phase 2A: {@code UserRepository}.
  */
 package com.shopsphere.backend.repository;
