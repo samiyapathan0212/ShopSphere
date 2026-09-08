@@ -24,11 +24,11 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.shopsphere.backend.domain.Role;
 import com.shopsphere.backend.domain.User;
-import com.shopsphere.backend.dto.response.LoginResponse;
 import com.shopsphere.backend.dto.response.UserResponse;
 import com.shopsphere.backend.exception.GlobalExceptionHandler;
 import com.shopsphere.backend.security.JwtProperties;
 import com.shopsphere.backend.security.JwtService;
+import com.shopsphere.backend.security.RefreshTokenCookieService;
 import com.shopsphere.backend.security.SecurityConfig;
 import com.shopsphere.backend.security.UserPrincipal;
 import com.shopsphere.backend.service.AuthService;
@@ -57,6 +57,9 @@ class SecurityFlowTest {
 
     @MockitoBean
     private UserDetailsService userDetailsService;
+
+    @MockitoBean
+    private RefreshTokenCookieService cookieService;
 
     @TestConfiguration
     static class JwtTestBeans {
@@ -94,7 +97,8 @@ class SecurityFlowTest {
                 1L, "Ada Lovelace", "ada@example.com", Role.CUSTOMER,
                 Instant.parse("2026-01-01T10:00:00Z"), Instant.parse("2026-01-01T10:00:00Z"));
         when(authService.register(any())).thenReturn(user);
-        when(authService.login(any())).thenReturn(LoginResponse.of("sample.jwt.token", 900_000L, user));
+        when(authService.login(any())).thenReturn(
+                new AuthService.AuthResult("sample.jwt.token", "raw.refresh.token", user, 900_000L));
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(APPLICATION_JSON)

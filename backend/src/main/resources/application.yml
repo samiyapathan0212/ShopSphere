@@ -40,6 +40,10 @@ app:
     secret: ${JWT_SECRET:ZGV2LW9ubHktc2hvcHNwaGVyZS1qd3Qtc2VjcmV0LWtleS1wbGFjZWhvbGRlci0wMTIzNDU2Nzg5YWJjZGVm}
     # Access token lifetime in milliseconds (15 minutes by default).
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
+  refresh-token:
+    # Refresh-token lifetime in milliseconds (30 days by default). Only a
+    # SHA-256 hash of the refresh token is persisted.
+    expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS:2592000000}
 
 # --- Springdoc OpenAPI ---
 springdoc:

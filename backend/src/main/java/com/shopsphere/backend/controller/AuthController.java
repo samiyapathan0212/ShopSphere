@@ -16,25 +16,30 @@ import jakarta.validation.Valid;
 import com.shopsphere.backend.dto.request.LoginRequest;
 import com.shopsphere.backend.dto.request.RegisterRequest;
 import com.shopsphere.backend.dto.response.LoginResponse;
+import com.shopsphere.backend.dto.response.RefreshTokenResponse;
 import com.shopsphere.backend.dto.response.UserResponse;
 import com.shopsphere.backend.mapper.UserMapper;
+import com.shopsphere.backend.security.RefreshTokenCookieService;
 import com.shopsphere.backend.security.UserPrincipal;
 import com.shopsphere.backend.service.AuthService;
 
 /**
- * Authentication endpoints (Phase 2B): registration, login and current user.
- * Refresh tokens and role-based authorization are intentionally not
- * implemented yet.
+ * Authentication endpoints (Phase 2C): registration, login, refresh and logout.
+ * Refresh tokens are sent only via the Secure/HttpOnly refresh_token cookie
+ * and are never included in JSON bodies. Role-based authorization is
+ * intentionally not implemented yet.
  */
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Authentication", description = "Registration, login and current user")
+@Tag(name = "Authentication", description = "Registration, login, refresh and logout")
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshTokenCookieService cookieService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, RefreshTokenCookieService cookieService) {
         this.authService = authService;
+        this.cookieService = cookieService;
     }
 
     @PostMapping("/register")
@@ -47,9 +52,37 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Log in with email and password",
-            description = "Authenticates credentials and returns a short-lived JWT access token.")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+            description = "Authenticates credentials, returns a short-lived JWT access token and sets the refresh_token HttpOnly cookie.")
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request,
+                                               jakarta.servlet.http.HttpServletResponse httpResponse) {
+        AuthService.AuthResult result = authService.login(request);
+        cookieService.writeCookie(httpResponse, cookieService.buildCookie(result.refreshToken()));
+        LoginResponse body = LoginResponse.of(result.accessToken(), result.expiresInMs(), result.user());
+        return ResponseEntity.ok(body);
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Refresh the access token",
+            description = "Rotates the refresh_token cookie and returns a fresh access JWT. The new refresh token is set in the cookie.")
+    public ResponseEntity<RefreshTokenResponse> refresh(jakarta.servlet.http.HttpServletRequest httpRequest,
+                                                        jakarta.servlet.http.HttpServletResponse httpResponse) {
+        String raw = extractRefreshToken(httpRequest);
+        AuthService.RefreshAuthResult result = authService.refresh(raw);
+        cookieService.writeCookie(httpResponse, cookieService.buildCookie(result.refreshToken()));
+        RefreshTokenResponse body =
+                RefreshTokenResponse.of(result.accessToken(), result.expiresInMs(), result.user());
+        return ResponseEntity.ok(body);
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Log out",
+            description = "Revokes the refresh_token cookie (idempotent) and clears it.")
+    public ResponseEntity<Void> logout(jakarta.servlet.http.HttpServletRequest httpRequest,
+                                       jakarta.servlet.http.HttpServletResponse httpResponse) {
+        String raw = extractRefreshToken(httpRequest);
+        authService.logout(raw);
+        cookieService.writeCookie(httpResponse, cookieService.buildClearingCookie());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")
@@ -58,5 +91,17 @@ public class AuthController {
     public ResponseEntity<UserResponse> me(Authentication authentication) {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         return ResponseEntity.ok(UserMapper.toResponse(principal.user()));
+    }
+
+    private String extractRefreshToken(jakarta.servlet.http.HttpServletRequest request) {
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if (RefreshTokenCookieService.COOKIE_NAME.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 }

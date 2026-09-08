@@ -1,6 +1,7 @@
 /**
  * Security configuration.
- * Phase 2B: {@code SecurityConfig}, {@code JwtService}, {@code JwtProperties},
+ * Phase 2C: {@code SecurityConfig}, {@code JwtService}, {@code JwtProperties},
+ * {@code RefreshTokenProperties}, {@code RefreshTokenCookieService},
  * {@code JwtAuthenticationFilter}, {@code UserPrincipal} and
  * {@code RestAuthenticationEntryPoint}.
  */

@@ -35,7 +35,7 @@ import com.shopsphere.backend.security.JwtService;
 
 /**
  * Unit tests for {@link AuthService} using a real BCrypt encoder and mocked
- * authentication manager / JWT service (no database required).
+ * authentication manager / JWT and refresh-token services (no database).
  */
 class AuthServiceTest {
 
@@ -45,6 +45,7 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
     private AuthenticationManager authenticationManager;
     private JwtService jwtService;
+    private RefreshTokenService refreshTokenService;
     private AuthService authService;
 
     @BeforeEach
@@ -53,7 +54,9 @@ class AuthServiceTest {
         passwordEncoder = new BCryptPasswordEncoder();
         authenticationManager = mock(AuthenticationManager.class);
         jwtService = mock(JwtService.class);
-        authService = new AuthService(userRepository, passwordEncoder, authenticationManager, jwtService);
+        refreshTokenService = mock(RefreshTokenService.class);
+        authService = new AuthService(userRepository, passwordEncoder, authenticationManager, jwtService,
+                refreshTokenService);
     }
 
     @Test
@@ -152,17 +155,56 @@ class AuthServiceTest {
         when(userRepository.findByEmail("ada@example.com")).thenReturn(Optional.of(user));
         when(jwtService.generateToken(any())).thenReturn("sample.jwt.token");
         when(jwtService.getExpirationMs()).thenReturn(900_000L);
+        when(refreshTokenService.createRefreshToken(user)).thenReturn("raw.refresh.token");
 
-        LoginResponse response = authService.login(new LoginRequest("ada@example.com", PLAIN_PASSWORD));
+        AuthService.AuthResult result = authService.login(new LoginRequest("ada@example.com", PLAIN_PASSWORD));
 
-        assertThat(response.accessToken()).isEqualTo("sample.jwt.token");
-        assertThat(response.tokenType()).isEqualTo("Bearer");
-        assertThat(response.expiresInMs()).isEqualTo(900_000L);
-        assertThat(response.user().email()).isEqualTo("ada@example.com");
-        assertThat(response.user().id()).isEqualTo(1L);
-        // Never expose credentials in the response.
+        assertThat(result.accessToken()).isEqualTo("sample.jwt.token");
+        assertThat(result.refreshToken()).isEqualTo("raw.refresh.token");
+        assertThat(result.expiresInMs()).isEqualTo(900_000L);
+        assertThat(result.user().email()).isEqualTo("ada@example.com");
+        assertThat(result.user().id()).isEqualTo(1L);
+        // The refresh token is carried for the HttpOnly cookie; the JSON-facing
+        // LoginResponse never includes it.
+        verify(refreshTokenService).createRefreshToken(user);
         assertThat(LoginResponse.class.getRecordComponents())
-                .noneMatch(c -> c.getName().toLowerCase().contains("password"));
+                .noneMatch(c -> c.getName().toLowerCase().contains("password")
+                        || c.getName().toLowerCase().contains("refresh"));
+        // Raw refresh tokens are never logged (no logging call here); assert the
+        // response record has no refresh field.
+    }
+
+    @Test
+    void refreshRotatesTokenAndIssuesNewAccessJwt() {
+        User user = User.builder()
+                .id(2L)
+                .name("Ada Lovelace")
+                .email("ada@example.com")
+                .passwordHash(passwordEncoder.encode(PLAIN_PASSWORD))
+                .role(Role.CUSTOMER)
+                .createdAt(Instant.parse("2026-01-01T10:00:00Z"))
+                .updatedAt(Instant.parse("2026-01-01T10:00:00Z"))
+                .build();
+
+        when(refreshTokenService.rotate("old.raw.refresh")).thenReturn("new.raw.refresh");
+        when(refreshTokenService.validateAndGetUser("new.raw.refresh")).thenReturn(user);
+        when(jwtService.generateToken(any())).thenReturn("fresh.access.jwt");
+        when(jwtService.getExpirationMs()).thenReturn(900_000L);
+
+        AuthService.RefreshAuthResult result = authService.refresh("old.raw.refresh");
+
+        assertThat(result.accessToken()).isEqualTo("fresh.access.jwt");
+        assertThat(result.refreshToken()).isEqualTo("new.raw.refresh");
+        assertThat(result.user().email()).isEqualTo("ada@example.com");
+        // Old token was rotated (single use) and a new one issued.
+        verify(refreshTokenService).rotate("old.raw.refresh");
+        verify(refreshTokenService).validateAndGetUser("new.raw.refresh");
+    }
+
+    @Test
+    void logoutRevokesRefreshToken() {
+        authService.logout("raw.refresh.token");
+        verify(refreshTokenService).revoke("raw.refresh.token");
     }
 
     @Test
@@ -177,6 +219,7 @@ class AuthServiceTest {
         // The repository is never consulted for a failed authentication, so the
         // response cannot reveal whether the email exists.
         verify(userRepository, never()).findByEmail(anyString());
+        verify(refreshTokenService, never()).createRefreshToken(any());
     }
 
     @Test

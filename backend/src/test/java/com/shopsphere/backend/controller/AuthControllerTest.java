@@ -28,14 +28,17 @@ import com.shopsphere.backend.dto.response.LoginResponse;
 import com.shopsphere.backend.dto.response.UserResponse;
 import com.shopsphere.backend.exception.EmailAlreadyExistsException;
 import com.shopsphere.backend.exception.GlobalExceptionHandler;
+import com.shopsphere.backend.exception.InvalidRefreshTokenException;
 import com.shopsphere.backend.security.JwtService;
+import com.shopsphere.backend.security.RefreshTokenCookieService;
 import com.shopsphere.backend.security.SecurityConfig;
 import com.shopsphere.backend.service.AuthService;
 
 /**
  * Web-slice tests for the authentication endpoints. Validates HTTP behavior,
- * centralized exception handling and that passwordHash never appears in
- * responses. The data layer is mocked; service logic is tested separately.
+ * centralized exception handling and that passwordHash/refresh tokens never
+ * appear in responses. The data layer is mocked; service logic is tested
+ * separately.
  */
 @WebMvcTest(AuthController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
@@ -52,6 +55,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private UserDetailsService userDetailsService;
+
+    @MockitoBean
+    private RefreshTokenCookieService cookieService;
 
     @Test
     void registerReturnsCreatedWithUserBody() throws Exception {
@@ -78,10 +84,13 @@ class AuthControllerTest {
 
     @Test
     void registerRejectsBlankFields() throws Exception {
+        // A whitespace-only password is blank for @NotBlank but satisfies
+        // @Size(min=8), so exactly one constraint fires per field and the
+        // reported message is deterministic.
         mockMvc.perform(post("/api/auth/register")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"name":"","email":"","password":""}
+                                {"name":"","email":"","password":"        "}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status", is(400)))
@@ -138,8 +147,9 @@ class AuthControllerTest {
         UserResponse user = new UserResponse(
                 1L, "Ada Lovelace", "ada@example.com", Role.CUSTOMER,
                 Instant.parse("2026-01-01T10:00:00Z"), Instant.parse("2026-01-01T10:00:00Z"));
-        LoginResponse loginResponse = LoginResponse.of("sample.jwt.token", 900_000L, user);
-        when(authService.login(any())).thenReturn(loginResponse);
+        AuthService.AuthResult result =
+                new AuthService.AuthResult("sample.jwt.token", "raw.refresh.token", user, 900_000L);
+        when(authService.login(any())).thenReturn(result);
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(APPLICATION_JSON)
@@ -151,7 +161,12 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.tokenType", is("Bearer")))
                 .andExpect(jsonPath("$.expiresInMs", is(900000)))
                 .andExpect(jsonPath("$.user.email", is("ada@example.com")))
+                // The JSON response must never contain the raw refresh token.
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.user.passwordHash").doesNotExist());
+
+        // The controller places the refresh token into the cookie, not the body.
+        verify(cookieService).writeCookie(any(), any());
     }
 
     @Test
@@ -178,5 +193,51 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.status", is(401)))
                 .andExpect(jsonPath("$.error", is("Unauthorized")))
                 .andExpect(jsonPath("$.message", is("Invalid email or password")));
+    }
+
+    @Test
+    void refreshIssuesNewAccessTokenAndRotatesCookie() throws Exception {
+        UserResponse user = new UserResponse(
+                1L, "Ada Lovelace", "ada@example.com", Role.CUSTOMER,
+                Instant.parse("2026-01-01T10:00:00Z"), Instant.parse("2026-01-01T10:00:00Z"));
+        AuthService.RefreshAuthResult result =
+                new AuthService.RefreshAuthResult("new.access.jwt", "new.raw.refresh", user, 900_000L);
+        when(authService.refresh("old.raw.refresh")).thenReturn(result);
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "old.raw.refresh")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken", is("new.access.jwt")))
+                .andExpect(jsonPath("$.user.email", is("ada@example.com")))
+                // New raw refresh token goes to the cookie, never JSON.
+                .andExpect(jsonPath("$.refreshToken").doesNotExist());
+
+        verify(authService).refresh("old.raw.refresh");
+        verify(cookieService).writeCookie(any(), any());
+    }
+
+    @Test
+    void refreshWithoutCookieReturnsUnauthorized() throws Exception {
+        // Missing refresh_token cookie must yield a clean generic 401, never a 500.
+        when(authService.refresh(null)).thenThrow(new InvalidRefreshTokenException());
+
+        mockMvc.perform(post("/api/auth/refresh"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status", is(401)))
+                .andExpect(jsonPath("$.message", is("Invalid or expired refresh token")))
+                .andExpect(jsonPath("$.refreshToken").doesNotExist());
+
+        // No cookie is written for a rejected refresh.
+        verify(cookieService, never()).writeCookie(any(), any());
+    }
+
+    @Test
+    void logoutRevokesTokenAndClearsCookie() throws Exception {
+        mockMvc.perform(post("/api/auth/logout")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "revoke-me")))
+                .andExpect(status().isNoContent());
+
+        verify(authService).logout("revoke-me");
+        verify(cookieService).writeCookie(any(), any());
     }
 }

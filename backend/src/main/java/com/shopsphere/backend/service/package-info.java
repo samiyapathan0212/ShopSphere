@@ -1,6 +1,6 @@
 /**
  * Business services.
- * Phase 2B: {@code AuthService} (registration + login) and
- * {@code UserDetailsServiceImpl}.
+ * Phase 2C: {@code AuthService}, {@code UserDetailsServiceImpl} and
+ * {@code RefreshTokenService}.
  */
 package com.shopsphere.backend.service;
