@@ -1,5 +1,5 @@
 /**
  * Entity/DTO mappers.
- * Phase 2A: {@code UserMapper}.
+ * Phase 3A: {@code UserMapper}, {@code CategoryMapper} and {@code ProductMapper}.
  */
 package com.shopsphere.backend.mapper;

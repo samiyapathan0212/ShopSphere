@@ -1,5 +1,6 @@
 /**
  * Spring Data repositories.
- * Phase 2C: {@code UserRepository} and {@code RefreshTokenRepository}.
+ * Phase 3A: {@code UserRepository}, {@code RefreshTokenRepository},
+ * {@code CategoryRepository} and {@code ProductRepository}.
  */
 package com.shopsphere.backend.repository;
