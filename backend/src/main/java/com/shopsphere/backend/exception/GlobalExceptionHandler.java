@@ -37,6 +37,15 @@ public class GlobalExceptionHandler {
                         fieldErrors));
     }
 
+    @ExceptionHandler(InvalidQueryParameterException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidQueryParameter(InvalidQueryParameterException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiErrorResponse.of(
+                        HttpStatus.BAD_REQUEST.value(),
+                        HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                        ex.getMessage()));
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest()

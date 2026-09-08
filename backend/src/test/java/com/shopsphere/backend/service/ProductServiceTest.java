@@ -7,7 +7,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -17,6 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import com.shopsphere.backend.config.CacheConfig.CacheProperties;
+import com.shopsphere.backend.exception.InvalidQueryParameterException;
 import com.shopsphere.backend.domain.Category;
 import com.shopsphere.backend.domain.Product;
 import com.shopsphere.backend.dto.request.ProductRequest;
@@ -44,7 +54,7 @@ class ProductServiceTest {
     void setUp() {
         productRepository = mock(ProductRepository.class);
         categoryRepository = mock(CategoryRepository.class);
-        productService = new ProductService(productRepository, categoryRepository);
+        productService = new ProductService(productRepository, categoryRepository, new CatalogCacheSupport(null), new CacheProperties());
     }
 
     private Category category(Long id, String name, boolean active) {
@@ -245,4 +255,5 @@ class ProductServiceTest {
                 .isInstanceOf(ProductNotFoundException.class);
         verify(productRepository, never()).delete(any(Product.class));
     }
+// @@TESTS@@
 }

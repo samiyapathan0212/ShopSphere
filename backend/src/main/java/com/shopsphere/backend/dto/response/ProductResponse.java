@@ -1,5 +1,7 @@
 package com.shopsphere.backend.dto.response;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -17,5 +19,8 @@ public record ProductResponse(
         boolean active,
         CategoryResponse category,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt) implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 }

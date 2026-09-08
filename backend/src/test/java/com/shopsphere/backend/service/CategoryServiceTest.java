@@ -42,7 +42,7 @@ class CategoryServiceTest {
     void setUp() {
         categoryRepository = mock(CategoryRepository.class);
         productRepository = mock(ProductRepository.class);
-        categoryService = new CategoryService(categoryRepository, productRepository);
+        categoryService = new CategoryService(categoryRepository, productRepository, new CatalogCacheSupport(null));
     }
 
     private Category category(Long id, String name, boolean active) {

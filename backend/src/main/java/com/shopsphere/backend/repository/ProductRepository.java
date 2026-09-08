@@ -4,15 +4,17 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import com.shopsphere.backend.domain.Product;
 
 /**
  * Spring Data repository for {@link Product}.
  * Lookups support the future catalog APIs: SKU uniqueness checks, product
- * listings and per-category/active filtering.
+ * listings and per-category/active filtering. Extends
+ * {@link JpaSpecificationExecutor} for dynamic search/filter/sort queries.
  */
-public interface ProductRepository extends JpaRepository<Product, Long> {
+public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
 
     Optional<Product> findBySku(String sku);
 

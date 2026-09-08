@@ -2,6 +2,8 @@ package com.shopsphere.backend.controller;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
@@ -32,6 +34,7 @@ import com.shopsphere.backend.domain.User;
 import com.shopsphere.backend.dto.request.CategoryRequest;
 import com.shopsphere.backend.dto.request.ProductRequest;
 import com.shopsphere.backend.dto.response.CategoryResponse;
+import com.shopsphere.backend.dto.response.PageResponse;
 import com.shopsphere.backend.dto.response.ProductResponse;
 import com.shopsphere.backend.exception.CategoryNotFoundException;
 import com.shopsphere.backend.exception.DuplicateCategoryNameException;
@@ -119,11 +122,12 @@ class CatalogAuthorizationTest {
 
     @Test
     void customerCanListProducts() throws Exception {
-        when(productService.listActiveProducts()).thenReturn(List.of(productResponse()));
+        when(productService.listProducts(any(), any(), any(), any(), anyInt(), anyInt(), any(), any(), anyBoolean()))
+                .thenReturn(new PageResponse<>(List.of(productResponse()), 0, 20, 1L, 1, false, false));
 
         mockMvc.perform(get("/api/products").header("Authorization", "Bearer " + customerToken()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].sku", is("SKU-001")));
+                .andExpect(jsonPath("$.content[0].sku", is("SKU-001")));
     }
 
     @Test

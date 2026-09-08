@@ -44,6 +44,13 @@ app:
     # Refresh-token lifetime in milliseconds (30 days by default). Only a
     # SHA-256 hash of the refresh token is persisted.
     expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS:2592000000}
+  cache:
+    # Catalog cache TTLs (seconds). Tune per environment via these variables.
+    category-ttl-seconds: ${CATEGORY_CACHE_TTL_SECONDS:300}
+    product-ttl-seconds: ${PRODUCT_CACHE_TTL_SECONDS:300}
+    product-list-ttl-seconds: ${PRODUCT_LIST_CACHE_TTL_SECONDS:60}
+    # Maximum page size for paginated catalog queries.
+    max-page-size: ${CATALOG_MAX_PAGE_SIZE:100}
 
 # --- Springdoc OpenAPI ---
 springdoc:

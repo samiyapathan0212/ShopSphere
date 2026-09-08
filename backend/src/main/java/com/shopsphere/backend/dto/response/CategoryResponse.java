@@ -1,5 +1,7 @@
 package com.shopsphere.backend.dto.response;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.Instant;
 
 /**
@@ -12,5 +14,8 @@ public record CategoryResponse(
         String description,
         boolean active,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt) implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 }
