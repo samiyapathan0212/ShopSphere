@@ -114,6 +114,22 @@ public class Product {
         return updatedAt;
     }
 
+    /**
+     * Applies an admin update to the mutable catalog fields, including the
+     * category association. Called on a managed entity inside a transaction
+     * so changes (and {@code updated_at} via {@code @UpdateTimestamp}) flush
+     * at commit.
+     */
+    public void update(String sku, String name, String description, BigDecimal price,
+                       Category category, boolean active) {
+        this.sku = sku;
+        this.name = name;
+        this.description = description;
+        this.price = price;
+        this.category = category;
+        this.active = active;
+    }
+
     public static final class Builder {
 
         private Long id;

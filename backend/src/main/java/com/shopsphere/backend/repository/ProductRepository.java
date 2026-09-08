@@ -26,4 +26,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findAllByCategoryId(Long categoryId);
 
     List<Product> findAllByCategoryIdAndActiveTrue(Long categoryId);
+
+    /** Used to block deleting a category that still has products (service pre-check). */
+    boolean existsByCategoryId(Long categoryId);
 }

@@ -85,6 +85,17 @@ public class Category {
         return updatedAt;
     }
 
+    /**
+     * Applies an admin update to the mutable catalog fields. Called on a
+     * managed entity inside a transaction so changes (and
+     * {@code updated_at} via {@code @UpdateTimestamp}) flush at commit.
+     */
+    public void update(String name, String description, boolean active) {
+        this.name = name;
+        this.description = description;
+        this.active = active;
+    }
+
     public static final class Builder {
 
         private Long id;

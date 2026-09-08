@@ -55,6 +55,25 @@ public class GlobalExceptionHandler {
                         ex.getMessage()));
     }
 
+    @ExceptionHandler({CategoryNotFoundException.class, ProductNotFoundException.class})
+    public ResponseEntity<ApiErrorResponse> handleNotFound(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiErrorResponse.of(
+                        HttpStatus.NOT_FOUND.value(),
+                        HttpStatus.NOT_FOUND.getReasonPhrase(),
+                        ex.getMessage()));
+    }
+
+    @ExceptionHandler({DuplicateCategoryNameException.class, DuplicateSkuException.class,
+            CategoryInUseException.class})
+    public ResponseEntity<ApiErrorResponse> handleCatalogConflict(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(
+                        HttpStatus.CONFLICT.value(),
+                        HttpStatus.CONFLICT.getReasonPhrase(),
+                        ex.getMessage()));
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiErrorResponse> handleAuthentication(AuthenticationException ex) {
         // Generic message: does not reveal whether the email exists or whether
