@@ -2,6 +2,7 @@ package com.shopsphere.backend.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,10 +25,12 @@ import com.shopsphere.backend.security.UserPrincipal;
 import com.shopsphere.backend.service.AuthService;
 
 /**
- * Authentication endpoints (Phase 2C): registration, login, refresh and logout.
- * Refresh tokens are sent only via the Secure/HttpOnly refresh_token cookie
- * and are never included in JSON bodies. Role-based authorization is
- * intentionally not implemented yet.
+ * Authentication endpoints (Phase 2C): registration, login, refresh and
+ * logout. Refresh tokens are sent only via the Secure/HttpOnly refresh_token
+ * cookie and are never included in JSON bodies.
+ * <p>
+ * Phase 2D: {@code /me} is available to any authenticated user with the
+ * CUSTOMER or ADMIN role (enforced via method security).
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -86,8 +89,9 @@ public class AuthController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     @Operation(summary = "Current authenticated user",
-            description = "Returns the profile of the authenticated user. Requires a valid Bearer token.")
+            description = "Returns the profile of the authenticated user. Requires a valid Bearer token (CUSTOMER or ADMIN).")
     public ResponseEntity<UserResponse> me(Authentication authentication) {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         return ResponseEntity.ok(UserMapper.toResponse(principal.user()));

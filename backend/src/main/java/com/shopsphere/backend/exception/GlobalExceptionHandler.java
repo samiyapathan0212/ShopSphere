@@ -7,16 +7,19 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.shopsphere.backend.dto.response.ApiErrorResponse;
+import com.shopsphere.backend.security.RestAccessDeniedHandler;
 
 /**
- * Centralized exception handling. No request payloads ever include passwords,
- * so nothing sensitive can be surfaced here.
+ * Centralized exception handling for validation, conflict, authentication
+ * (401) and authorization (403) errors. No request payloads ever include
+ * passwords, so nothing sensitive can be surfaced here.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -71,6 +74,18 @@ public class GlobalExceptionHandler {
                         HttpStatus.UNAUTHORIZED.value(),
                         HttpStatus.UNAUTHORIZED.getReasonPhrase(),
                         ex.getMessage()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        // Clean JSON 403 for authenticated users lacking the required role.
+        // Same generic message as the filter-chain handler; never reveals which
+        // rule failed or any detail about the caller.
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiErrorResponse.of(
+                        HttpStatus.FORBIDDEN.value(),
+                        HttpStatus.FORBIDDEN.getReasonPhrase(),
+                        RestAccessDeniedHandler.FORBIDDEN_MESSAGE));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
