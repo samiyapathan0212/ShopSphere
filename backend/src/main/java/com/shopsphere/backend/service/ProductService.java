@@ -172,12 +172,20 @@ public class ProductService {
 
     /** Builds a Spring Data sort from whitelisted fields/directions. */
     private Sort buildSort(String sort, String direction) {
-        String field = (sort == null || sort.isBlank())
-                ? "createdAt" : sort.trim().toLowerCase();
-        boolean ascending = direction == null || direction.isBlank() || "asc".equalsIgnoreCase(direction);
-        // The id tie-breaker keeps pagination deterministic when many rows share
-        // the same sort key (e.g. identical createdAt or price).
-        return Sort.by(ascending ? Direction.ASC : Direction.DESC, field).and(Sort.by(Direction.ASC, "id"));
+        // Map the (case-insensitive) request value back to the exact entity
+        // property name: sort paths are resolved case-sensitively by Spring Data,
+        // so the camelCase property must never be lowercased.
+        String field = (sort == null || sort.isBlank()) ? "createdAt"
+                : ALLOWED_SORT_FIELDS.stream()
+                      .filter(allowed -> allowed.equalsIgnoreCase(sort))
+                      .findFirst()
+                      .orElse("createdAt");
+
+        boolean ascending = direction == null || direction.isBlank()
+                || "asc".equalsIgnoreCase(direction);
+
+        return Sort.by(ascending ? Direction.ASC : Direction.DESC, field)
+                .and(Sort.by(Direction.ASC, "id"));
     }
 
     /** Cache key covering every input that affects listing results. */
