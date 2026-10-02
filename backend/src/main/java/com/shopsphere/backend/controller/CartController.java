@@ -4,6 +4,8 @@ import java.security.Principal;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +21,7 @@ import jakarta.validation.Valid;
 import com.shopsphere.backend.dto.request.AddCartItemRequest;
 import com.shopsphere.backend.dto.request.UpdateCartItemRequest;
 import com.shopsphere.backend.dto.response.CartResponse;
+import com.shopsphere.backend.security.UserPrincipal;
 import com.shopsphere.backend.service.CartService;
 
 /**
@@ -76,9 +79,17 @@ public class CartController {
     }
 
     private Long userIdFrom(Principal principal) {
-        // UserPrincipal.getUsername() is the email; we need the user id from the
-        // custom principal attached by the JWT filter.
-        return ((com.shopsphere.backend.security.UserPrincipal) principal)
-                .user().getId();
+        // Spring Security hands controllers the Authentication token, not the
+        // UserDetails it wraps, so the principal has to be unwrapped first.
+        // UserDetailsServiceImpl returns a UserPrincipal, which carries the id.
+        if (principal instanceof UserPrincipal userPrincipal) {
+            return userPrincipal.user().getId();
+        }
+        if (principal instanceof Authentication authentication
+                && authentication.getPrincipal() instanceof UserPrincipal userPrincipal) {
+            return userPrincipal.user().getId();
+        }
+        throw new AuthenticationCredentialsNotFoundException(
+                "Authenticated principal is not a UserPrincipal");
     }
 }

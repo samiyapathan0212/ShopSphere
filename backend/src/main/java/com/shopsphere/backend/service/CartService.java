@@ -51,7 +51,9 @@ public class CartService {
         this.userRepository = userRepository;
     }
 
-    @Transactional(readOnly = true)
+    // Writable (not readOnly) because an empty cart row is created lazily on
+    // first access for a user who has never added an item.
+    @Transactional
     public CartResponse getCart(Long userId) {
         Cart cart = cartRepository.findByUserId(userId).orElseGet(() -> createEmptyCart(userId));
         return mapCart(cart);

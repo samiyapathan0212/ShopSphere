@@ -41,7 +41,11 @@ public class WishlistService {
                 this.userRepository = userRepository;
     }
 
-    @Transactional(readOnly = true)
+    // Writable, not readOnly: requireWishlist() lazily creates the wishlist row
+    // when the customer has none yet, and an INSERT cannot run in a read-only
+    // transaction. addItem/removeItem call this internally, so their own
+    // (writable) transaction is what actually governs those paths.
+    @Transactional
     public WishlistResponse getWishlist(Long userId) {
         Wishlist wishlist = requireWishlist(userId);
         List<WishlistItemResponse> items = wishlistItemRepository.findByWishlistId(wishlist.getId()).stream()

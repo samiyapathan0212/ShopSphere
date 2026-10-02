@@ -12,6 +12,9 @@ Thumbs.db
 .env.*.local
 !.env.example
 
+# --- Generated credential artifacts (local test tokens) ---
+*.token
+
 # --- Java / Maven ---
 backend/target/
 

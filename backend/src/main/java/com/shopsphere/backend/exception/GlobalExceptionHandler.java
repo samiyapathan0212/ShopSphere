@@ -3,6 +3,8 @@ package com.shopsphere.backend.exception;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +22,15 @@ import com.shopsphere.backend.security.RestAccessDeniedHandler;
  * Centralized exception handling for validation, conflict, authentication
  * (401) and authorization (403) errors. No request payloads ever include
  * passwords, so nothing sensitive can be surfaced here.
+ * <p>
+ * Phase 5 (checkout, orders, payments, inventory) registers the same envelope
+ * here so those flows surface their documented 400/404/409 statuses instead of
+ * falling through to the generic 500 handler.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
@@ -55,6 +63,17 @@ public class GlobalExceptionHandler {
                         "Malformed request body"));
     }
 
+    @ExceptionHandler({EmptyCartException.class, InvalidQuantityException.class})
+    public ResponseEntity<ApiErrorResponse> handlePurchaseBadRequest(RuntimeException ex) {
+        // 400: the request itself cannot be carried out as described — there is
+        // nothing to buy, or a quantity guard rejected the value.
+        return ResponseEntity.badRequest()
+                .body(ApiErrorResponse.of(
+                        HttpStatus.BAD_REQUEST.value(),
+                        HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                        ex.getMessage()));
+    }
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ApiErrorResponse> handleEmailConflict(EmailAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -64,7 +83,13 @@ public class GlobalExceptionHandler {
                         ex.getMessage()));
     }
 
-    @ExceptionHandler({CategoryNotFoundException.class, ProductNotFoundException.class})
+    @ExceptionHandler({CategoryNotFoundException.class, ProductNotFoundException.class,
+            WishlistNotFoundException.class, WishlistItemNotFoundException.class,
+            // Phase 5: a foreign order/payment is deliberately indistinguishable
+            // from a missing one, so all of these are plain 404s.
+            OrderNotFoundException.class, PaymentNotFoundException.class,
+            CartNotFoundException.class, CartItemNotFoundException.class,
+            InventoryNotFoundException.class})
     public ResponseEntity<ApiErrorResponse> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiErrorResponse.of(
@@ -74,8 +99,22 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({DuplicateCategoryNameException.class, DuplicateSkuException.class,
-            CategoryInUseException.class})
+            CategoryInUseException.class, WishlistItemAlreadyExistsException.class})
     public ResponseEntity<ApiErrorResponse> handleCatalogConflict(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(
+                        HttpStatus.CONFLICT.value(),
+                        HttpStatus.CONFLICT.getReasonPhrase(),
+                        ex.getMessage()));
+    }
+
+    @ExceptionHandler({InsufficientStockException.class, OrderCancellationException.class,
+            PaymentStateException.class, InvalidOrderStatusTransitionException.class})
+    public ResponseEntity<ApiErrorResponse> handleOrderConflict(RuntimeException ex) {
+        // 409: the request is well formed but conflicts with current state —
+        // stock cannot cover the demand, the order can no longer be cancelled,
+        // the payment is in an unsupported state, or the status transition is
+        // rejected by the order lifecycle state machine.
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiErrorResponse.of(
                         HttpStatus.CONFLICT.value(),
@@ -128,6 +167,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception ex) {
+        log.error("Unexpected error", ex);
         return ResponseEntity.internalServerError()
                 .body(ApiErrorResponse.of(
                         HttpStatus.INTERNAL_SERVER_ERROR.value(),

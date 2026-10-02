@@ -22,6 +22,15 @@ public class SandboxPaymentGateway implements PaymentGateway {
 
     static final String FORCE_FAILURE_KEY = "forceFailure";
 
+    /** Prefix shared by every sandbox reference. */
+    private static final String REFERENCE_PREFIX = "sbx_";
+    /**
+     * Prefix for references the sandbox declined. It deliberately extends
+     * {@link #REFERENCE_PREFIX}, so {@link #verify} has to reject it explicitly
+     * — a declined charge must never be reported as verified.
+     */
+    private static final String DECLINED_REFERENCE_PREFIX = "sbx_decl_";
+
     private final boolean forceFailure;
 
     public SandboxPaymentGateway(
@@ -38,7 +47,7 @@ public class SandboxPaymentGateway implements PaymentGateway {
     public Result charge(Charge charge) {
         boolean declined = forceFailure
                 || Boolean.parseBoolean(charge.metadata().getOrDefault(FORCE_FAILURE_KEY, "false"));
-        String reference = (declined ? "sbx_decl_" : "sbx_") + UUID.randomUUID();
+        String reference = (declined ? DECLINED_REFERENCE_PREFIX : REFERENCE_PREFIX) + UUID.randomUUID();
         if (declined) {
             return new Result(false, reference, "Payment declined by sandbox provider");
         }
@@ -47,8 +56,13 @@ public class SandboxPaymentGateway implements PaymentGateway {
 
     @Override
     public Result verify(String providerPaymentId) {
-        if (providerPaymentId == null || !providerPaymentId.startsWith("sbx_")) {
+        if (providerPaymentId == null || !providerPaymentId.startsWith(REFERENCE_PREFIX)) {
             return new Result(false, providerPaymentId, "Unknown sandbox payment reference");
+        }
+        // A declined reference also starts with the common prefix, so it has to
+        // be rejected here or a failed payment would verify as successful.
+        if (providerPaymentId.startsWith(DECLINED_REFERENCE_PREFIX)) {
+            return new Result(false, providerPaymentId, "Payment was declined by sandbox provider");
         }
         return new Result(true, providerPaymentId, "Payment reference verified by sandbox provider");
     }

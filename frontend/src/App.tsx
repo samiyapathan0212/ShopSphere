@@ -1,35 +1,48 @@
-import { useGetHealthQuery } from './app/api/apiSlice';
+import { Route, Routes } from 'react-router-dom';
+import MainLayout from './layouts/MainLayout';
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ProductsPage from './pages/ProductsPage';
+import ProductDetailPage from './pages/ProductDetailPage';
+import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
+import WishlistPage from './pages/WishlistPage';
+import OrdersPage from './pages/OrdersPage';
+import OrderDetailPage from './pages/OrderDetailPage';
+import OrderConfirmationPage from './pages/OrderConfirmationPage';
+import NotFoundPage from './pages/NotFoundPage';
+import AdminOrdersPage from './pages/AdminOrdersPage';
+import AdminOrderDetailPage from './pages/AdminOrderDetailPage';
 
+/**
+ * Route table for the ShopSphere frontend.
+ *
+ * Every route renders inside {@link MainLayout}, so the responsive navbar and
+ * footer are shared by all pages. Feature routes are wired now and filled in by
+ * their own phases (catalog, cart, wishlist, orders, authentication) — no data
+ * fetching or business logic lives here.
+ */
 function App() {
-  const { data, isLoading, isError } = useGetHealthQuery();
-
   return (
-    <main className="app">
-      <h1>ShopSphere</h1>
-      <p>Phase 1 — project foundation</p>
-
-      <section className="health" aria-labelledby="health-title">
-        <h2 id="health-title">Backend health</h2>
-        {isLoading && <p>Checking backend…</p>}
-        {isError && (
-          <p className="error">
-            Backend is unreachable. Is the API running locally or in Docker?
-          </p>
-        )}
-        {data && (
-          <dl>
-            <div>
-              <dt>Status</dt>
-              <dd>{data.status}</dd>
-            </div>
-            <div>
-              <dt>Service</dt>
-              <dd>{data.service}</dd>
-            </div>
-          </dl>
-        )}
-      </section>
-    </main>
+    <Routes>
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/products/:id" element={<ProductDetailPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/orders/:id" element={<OrderDetailPage />} />
+        <Route path="/order-confirmation/:id" element={<OrderConfirmationPage />} />
+        <Route path="/admin/orders" element={<AdminOrdersPage />} />
+        <Route path="/admin/orders/:id" element={<AdminOrderDetailPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
   );
 }
 

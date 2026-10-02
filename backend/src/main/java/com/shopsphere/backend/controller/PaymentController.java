@@ -4,6 +4,8 @@ import java.security.Principal;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -64,6 +66,17 @@ public class PaymentController {
     }
 
     private Long currentUserId(Principal principal) {
-        return ((UserPrincipal) principal).user().getId();
+        // Spring Security hands controllers the Authentication token, not the
+        // UserDetails it wraps, so the principal has to be unwrapped first.
+        // UserDetailsServiceImpl returns a UserPrincipal, which carries the id.
+        if (principal instanceof UserPrincipal userPrincipal) {
+            return userPrincipal.user().getId();
+        }
+        if (principal instanceof Authentication authentication
+                && authentication.getPrincipal() instanceof UserPrincipal userPrincipal) {
+            return userPrincipal.user().getId();
+        }
+        throw new AuthenticationCredentialsNotFoundException(
+                "Authenticated principal is not a UserPrincipal");
     }
 }
