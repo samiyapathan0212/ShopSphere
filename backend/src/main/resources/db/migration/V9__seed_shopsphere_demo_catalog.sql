@@ -35,6 +35,10 @@ DELETE FROM products WHERE sku IN ('AERO-PRO', 'PULSE-3');
 -- ---------------------------------------------------------------------------
 -- The canonical ShopSphere demo catalogue, ids 1-14.
 -- ---------------------------------------------------------------------------
+INSERT INTO categories (name, description, active, created_at, updated_at)
+VALUES ('Audio', 'Audio products category', TRUE, NOW(), NOW())
+ON CONFLICT (name) DO NOTHING;
+
 INSERT INTO products (id, sku, name, description, price, active, category_id, created_at, updated_at)
 VALUES
     (1,  'aerowave-pro-headphones',    'AeroWave Pro Wireless Headphones',
