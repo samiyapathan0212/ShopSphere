@@ -9,7 +9,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-shopsphere}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shopsphere}
     ports:
-      - "5432:5432"
+      # Bound to loopback only: the database is reachable from the host for
+      # local tooling, but is never published on all interfaces.
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,20 +19,29 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: shopsphere-redis
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-}"]
+    environment:
+      # Also exposed to the container so the healthcheck can authenticate
+      # without the password appearing in the command line.
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # Works with and without REDIS_PASSWORD. --no-auth-warning keeps the
+      # password out of the container logs; when no password is set the flag is
+      # simply ignored.
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   backend:
     build:
@@ -43,16 +54,33 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      JWT_SECRET: ${JWT_SECRET:-ZGV2LW9ubHktc2hvcHNwaGVyZS1qd3Qtc2VjcmV0LWtleS1wbGFjZWhvbGRlci0wMTIzNDU2Nzg5YWJjZGVm}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
       REFRESH_TOKEN_EXPIRATION_MS: ${REFRESH_TOKEN_EXPIRATION_MS:-2592000000}
+      # Secure is the default (correct for HTTPS). Browsers treat
+      # http://localhost as a secure context, so local Docker still works.
+      REFRESH_TOKEN_COOKIE_SECURE: ${REFRESH_TOKEN_COOKIE_SECURE:-true}
+      # Comma-separated browser origins allowed to call the API. Empty keeps the
+      # API same-origin only, which is what the nginx proxy below provides.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # Set to false in production to remove the Swagger UI and OpenAPI document.
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
     ports:
       - "8080:8080"
+    healthcheck:
+      # Reuses the existing /api/health endpoint (already permitAll). It reports
+      # process liveness only and exposes no database or Redis internals.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
 
   frontend:
     build:
@@ -61,7 +89,9 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

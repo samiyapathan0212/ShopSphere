@@ -89,6 +89,10 @@ public class SecurityConfig {
                                                    RestAccessDeniedHandler accessDeniedHandler,
                                                    JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
+                // Enables CORS using the CorsConfigurationSource bean in
+                // CorsConfig. When no origins are configured it is a no-op, so
+                // the default single-origin deployment is unchanged.
+                .cors(cors -> { })
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .httpBasic(basic -> basic.disable())

@@ -13,8 +13,11 @@ import jakarta.servlet.http.HttpServletResponse;
  * Attribute choices:
  * <ul>
  *   <li>{@code HttpOnly} — prevents JavaScript access.</li>
- *   <li>{@code Secure} — only sent over HTTPS (in dev it is harmless when the
- *       front end proxies over http/https context, and correct for production).</li>
+ *   <li>{@code Secure} — only sent over HTTPS. Configurable through
+ *       {@code app.refresh-token.secure} ({@code REFRESH_TOKEN_COOKIE_SECURE},
+ *       default true). Browsers treat {@code http://localhost} as a secure
+ *       context, so local Docker development is unaffected; set it to false
+ *       only for plain-HTTP development on a non-localhost host.</li>
  *   <li>{@code SameSite=Lax} — sent on same-site navigations, blocks cross-site
  *       sending in modern browsers, which is appropriate for the current
  *       development setup (separate frontend/backend on the same site).</li>
@@ -38,7 +41,7 @@ public class RefreshTokenCookieService {
         return ResponseCookie.from(COOKIE_NAME, rawToken)
                 .path("/api/auth")
                 .httpOnly(true)
-                .secure(true)
+                .secure(properties.isSecure())
                 .sameSite("Lax")
                 .maxAge(Duration.ofMillis(properties.getExpirationMs()))
                 .build();
@@ -48,7 +51,7 @@ public class RefreshTokenCookieService {
         return ResponseCookie.from(COOKIE_NAME, "")
                 .path("/api/auth")
                 .httpOnly(true)
-                .secure(true)
+                .secure(properties.isSecure())
                 .sameSite("Lax")
                 .maxAge(Duration.ZERO)
                 .build();

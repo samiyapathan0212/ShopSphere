@@ -34,16 +34,33 @@ server:
 # --- JWT (via environment variables) ---
 app:
   jwt:
-    # Development-only placeholder secret (base64-encoded). NEVER use in
-    # production: set JWT_SECRET to a strong random base64 value (e.g.
-    # `openssl rand -base64 64`) in your environment instead.
-    secret: ${JWT_SECRET:ZGV2LW9ubHktc2hvcHNwaGVyZS1qd3Qtc2VjcmV0LWtleS1wbGFjZWhvbGRlci0wMTIzNDU2Nzg5YWJjZGVm}
+    # No fallback on purpose: the signing key MUST come from the environment
+    # (JWT_SECRET). With no default, an unset variable leaves the placeholder
+    # unresolved and the context fails to start, and JwtProperties additionally
+    # rejects blank/short/non-base64 secrets. This prevents the app from ever
+    # silently signing tokens with a well-known development key.
+    secret: ${JWT_SECRET}
     # Access token lifetime in milliseconds (15 minutes by default).
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
   refresh-token:
     # Refresh-token lifetime in milliseconds (30 days by default). Only a
     # SHA-256 hash of the refresh token is persisted.
     expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS:2592000000}
+    # Secure cookies are the default (correct for HTTPS deployments). Browsers
+    # treat http://localhost as a secure context, so local Docker development is
+    # unaffected. Set to false only for plain-HTTP development on a
+    # non-localhost host, where a Secure cookie would be dropped by the browser.
+    secure: ${REFRESH_TOKEN_COOKIE_SECURE:true}
+  cors:
+    # Comma-separated browser origins allowed to call the API cross-origin, for
+    # example "https://shop.example.com,https://admin.example.com". When a list is
+    # set, only those origins may call the API; any other origin gets a 403.
+    # When empty (the default), NO cross-origin rule is registered, which is the
+    # single-origin nginx-proxied setup where the browser talks to one origin.
+    # .env.example carries a safe localhost example for local development.
+    # Never use "*": credentials are allowed, and the browser rejects a
+    # wildcard together with credentials anyway.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   cache:
     # Catalog cache TTLs (seconds). Tune per environment via these variables.
     category-ttl-seconds: ${CATEGORY_CACHE_TTL_SECONDS:300}
@@ -56,5 +73,9 @@ app:
 springdoc:
   api-docs:
     path: /v3/api-docs
+    # Set SWAGGER_ENABLED=false in production: springdoc then registers no
+    # endpoint at all, so the OpenAPI document and UI are not exposed.
+    enabled: ${SWAGGER_ENABLED:true}
   swagger-ui:
     path: /swagger-ui.html
+    enabled: ${SWAGGER_ENABLED:true}

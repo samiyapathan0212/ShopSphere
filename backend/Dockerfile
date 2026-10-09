@@ -9,6 +9,8 @@ RUN mvn -B package -DskipTests
 # --- Runtime stage ---
 FROM eclipse-temurin:23-jre-alpine
 WORKDIR /app
+# curl is used by the container healthcheck against /api/health.
+RUN apk add --no-cache curl
 COPY --from=build /app/target/shopsphere-backend-*.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
