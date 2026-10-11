@@ -21,8 +21,14 @@ production build is deployed as two Render web services with nginx reverse-proxy
 
 ## Live demo
 
-- **Storefront:** https://shopsphere-frontend-fkka.onrender.com/
-- **API health check:** https://shopsphere-api-h29l.onrender.com/api/health
+| Resource | Link |
+| --- | --- |
+| **Live Demo (Storefront)** | <https://shopsphere-frontend-kfka.onrender.com/> |
+| Backend API health check | <https://shopsphere-api-h29l.onrender.com/api/health> |
+| GitHub Repository | <https://github.com/samiyapathan0212/ShopSphere> |
+
+**Hosting:** the React storefront (served by nginx) and the Spring Boot API run as two Render
+web services. The nginx proxy in `frontend/nginx.conf` forwards `/api` to the deployed API.
 
 > **Note:** Both services run on Render's free tier, which sleeps instances after
 > periods of inactivity. The first request after an idle period can take a while to
